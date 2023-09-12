@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-// TODO: Support escape signs
+// TODO: Support escape signs (done)
 // TODO: Allocate the stack and xml_t block as the same.
 // TODO: Ignore <!DOCTYPE ... > tags. (done)
 // TODO: Support trim, collapse and xml:space
-// Create custom function for strcmp, itoaand toupper.
+// TODO: Create custom function for strcmp, itoaand toupper.
 
 typedef struct xml__impl xml_t;
 
@@ -57,7 +57,7 @@ enum xml__label {
 	xml__error, xml__error_loop,
 	xml__c1, xml__c2, xml__c3, xml__c4, xml__c5, xml__c6, xml__c7, xml__c8, xml__c9, xml__c10,
 	xml__c11, xml__c12, xml__c13, xml__c14, xml__c15, xml__c16, xml__c17, xml__c18, xml__c19,
-	xml__c20, xml__c21,
+	xml__c20, xml__c21, xml__c22, xml__c23,
 	xml__l1, xml__l2, xml__l3, xml__l4,
 	xml__t1, xml__t2, xml__t3, xml__t4, xml__t5, xml__t6, xml__t7, xml__t8
 };
@@ -114,6 +114,12 @@ inline void xml__push_str(xml_t* xml, const char* str, uint8_t postfix) {
 	xml__push(xml, str, len + sizeof(uint8_t));
 	xml__push(xml, &(uint32_t){ len + sizeof(uint8_t) }, sizeof(uint32_t));
 	xml__push(xml, &(uint8_t){ postfix }, sizeof(uint8_t));
+}
+
+inline char xml__toupper(char c)
+{
+	if (c >= 'a' && c <= 'z') return 'A' - 'a' + c;
+	return c;
 }
 
 inline int xml__nextch(xml_t* xml)
@@ -252,8 +258,13 @@ jp: switch (xml->lc) {
 		NEXTCH();
 		int sc = xml->sc;
 		while (xml->ch != ch) {
-			xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
-			NEXTCH();
+			if (xml->ch == '&') {
+				CALL(xml__c22, xml__esc);
+			}
+			else {
+				xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
+				NEXTCH();
+			}
 		}
 		NEXTCH();
 		xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
@@ -394,8 +405,13 @@ jp: switch (xml->lc) {
 		LABEL(xml__tag_loop);
 		NEXTCH();
 		while (xml->ch != '<') {
-			xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
-			NEXTCH();
+			if (xml->ch == '&') {
+				CALL(xml__c23, xml__esc);
+			}
+			else {
+				xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
+				NEXTCH();
+			}
 		}
 		NEXTCH();
 		if (xml->ch == '/') {
@@ -420,6 +436,72 @@ jp: switch (xml->lc) {
 			NEXTCH();
 			JMP(xml__tag_loop);
 		}
+	}
+
+	LABEL(xml__esc);
+	{
+		enum xml__label lc = *((enum xml__label*)xml__pop(xml, sizeof(enum xml__label)));
+		int sc = xml->sc;
+		uint8_t base = ' ';
+		NEXTCH();
+		if (xml->ch == '#') {
+			NEXTCH();
+			base = 'd';
+			if (xml->ch == 'x') {
+				base = 'x';
+				NEXTCH();
+			}
+		}
+		while (xml->ch != ';') {
+			xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
+			NEXTCH();
+		}
+		NEXTCH();
+		xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
+		int cnt = xml->sc - sc;
+		xml->sc -= cnt;
+		if (base == 'd') {
+			if (cnt == 2) {
+				xml__push(xml, &(uint8_t){ xml->stack[xml->sc] - '0' }, sizeof(uint8_t));
+			}
+			else if (cnt == 3) {
+				xml__push(xml, &(uint8_t){ (xml->stack[xml->sc] - '0') * 10 + xml->stack[xml->sc + 1] - '0' }, sizeof(uint8_t));
+			}
+			else if (cnt == 4) {
+				xml__push(xml, &(uint8_t){ (xml->stack[xml->sc] - '0') * 100 + (xml->stack[xml->sc + 1] - '0') * 10 + xml->stack[xml->sc + 2] - '0' }, sizeof(uint8_t));
+			}
+			else JMP(9000);
+		}
+		else if (base == 'x') {
+			if (cnt == 2) {
+				char a = xml__toupper(xml->stack[xml->sc]);
+				xml__push(xml, &(uint8_t){ a >= 'A' ? (a - 'A' + 10) : (a - '0') }, sizeof(uint8_t));
+			}
+			else if (cnt == 3) {
+				char a = xml__toupper(xml->stack[xml->sc]);
+				char b = xml__toupper(xml->stack[xml->sc + 1]);
+				xml__push(xml, &(uint8_t){ (a >= 'A' ? (a - 'A' + 10) : (a - '0') << 4) + (b >= 'A' ? (b - 'A' + 10) : (b - '0')) }, sizeof(uint8_t));
+			}
+			else JMP(9000);
+		}
+		else if (strcmp(&xml->stack[xml->sc], "amp") == 0) {
+			xml__push(xml, &(uint8_t){ '&' }, sizeof(uint8_t));
+		}
+		else if (strcmp(&xml->stack[xml->sc], "apos") == 0) {
+			xml__push(xml, &(uint8_t){ '\'' }, sizeof(uint8_t));
+		}
+		else if (strcmp(&xml->stack[xml->sc], "lt") == 0) {
+			xml__push(xml, &(uint8_t){ '<' }, sizeof(uint8_t));
+		}
+		else if(strcmp(&xml->stack[xml->sc], "gt") == 0) {
+			xml__push(xml, &(uint8_t){ '>' }, sizeof(uint8_t));
+		}
+		else if (strcmp(&xml->stack[xml->sc], "quot") == 0) {
+			xml__push(xml, &(uint8_t){ '\"' }, sizeof(uint8_t));
+		}
+		else JMP(xml__error);
+		xml__push(xml, &(enum xml_label){ lc }, sizeof(enum xml__label));
+		RET();
 	}
 
 	LABEL(xml__error);
