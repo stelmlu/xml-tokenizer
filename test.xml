@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Root xml:space='default'>
+<Root>
   <Customer CustomerID="GREAL">
     <CompanyName>Great Lakes &#57; &#x39; &lt;Food Market&gt;</CompanyName>
     <ContactName>Howard Snyder</ContactName>

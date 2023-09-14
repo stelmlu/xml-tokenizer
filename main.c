@@ -69,7 +69,7 @@ enum xml__label {
 	xml__value,
 	xml__attr,
 	xml__tag, xml__tag_loop,
-	xml__esc,
+	xml__escape_sign,
 	xml__error, xml__error_loop,
 	xml__c1, xml__c2, xml__c3, xml__c4, xml__c5, xml__c6, xml__c7, xml__c8, xml__c9, xml__c10,
 	xml__c11, xml__c12, xml__c13, xml__c14, xml__c15, xml__c16, xml__c17, xml__c18, xml__c19,
@@ -141,6 +141,23 @@ inline char xml__toupper(char c)
 {
 	if (c >= 'a' && c <= 'z') return 'A' - 'a' + c;
 	return c;
+}
+
+void xml__restore_xml_space_stack(xml_t* xml)
+{
+	if (xml->xml_space_count > 0) {
+		struct xml__xml_space* xml_space = &xml->xml_space_stack[xml->xml_space_count - 1];
+		if (xml_space->level == xml->level) {
+			if (xml_space->preserve > 0 && xml->xml_space_count > 1) {
+				xml->flags |= (1 << FLAG_PRESERVE);
+			}
+			else {
+				xml->flags &= ~(1 << FLAG_PRESERVE);
+			}
+			xml->xml_space_count--;
+		}
+	}
+	xml->level--;
 }
 
 inline int xml__nextch(xml_t* xml)
@@ -283,7 +300,7 @@ jp: switch (xml->lc) {
 		xml->rc = xml->sc;
 		while (xml->ch != xml->rb) {
 			if (xml->ch == '&') {
-				CALL(xml__c22, xml__esc);
+				CALL(xml__c22, xml__escape_sign);
 			}
 			else {
 				xml__push(xml, &(uint8_t){ xml->ch }, sizeof(uint8_t));
@@ -444,19 +461,7 @@ jp: switch (xml->lc) {
 		}
 		if (xml->ch == '/') {
 			TOK(xml__t5, XML_TAG_END);
-			if (xml->xml_space_count > 0) {
-				struct xml__xml_space* xml_space = &xml->xml_space_stack[xml->xml_space_count - 1];
-				if (xml_space->level == xml->level) {
-					if (xml_space->preserve > 0 && xml->xml_space_count > 1) {
-						xml->flags |= (1 << FLAG_PRESERVE);
-					}
-					else {
-						xml->flags &= ~(1 << FLAG_PRESERVE);
-					}
-					xml->xml_space_count--;
-				}
-			}
-			xml->level--;
+			xml__restore_xml_space_stack(xml);
 			xml__pop_str(xml);
 			RET();
 		}
@@ -470,7 +475,7 @@ jp: switch (xml->lc) {
 		xml->rb = '\0';
 		while (xml->ch != '<') {
 			if (xml->ch == '&') {
-				CALL(xml__c23, xml__esc);
+				CALL(xml__c23, xml__escape_sign);
 				xml->rb = *(uint8_t*)xml__peek(xml, sizeof(uint8_t), 0);
 			}
 			else {
@@ -505,19 +510,7 @@ jp: switch (xml->lc) {
 			NEXTCH();
 			CALL(xml__c18, xml__name);
 			TOK(xml__t7, XML_TAG_END);
-			if (xml->xml_space_count > 0) {
-				struct xml__xml_space* xml_space = &xml->xml_space_stack[xml->xml_space_count - 1];
-				if (xml_space->level == xml->level) {
-					if (xml_space->preserve > 0 && xml->xml_space_count > 1) {
-						xml->flags |= (1 << FLAG_PRESERVE);
-					}
-					else {
-						xml->flags &= ~(1 << FLAG_PRESERVE);
-					}
-					xml->xml_space_count--;
-				}
-			}
-			xml->level--;
+			xml__restore_xml_space_stack(xml);
 			xml__pop_str(xml);
 			CALL(xml__c17, xml__padding);
 			if (xml->ch != '>') JMP(xml__error);
@@ -533,7 +526,7 @@ jp: switch (xml->lc) {
 		}
 	}
 
-	LABEL(xml__esc);
+	LABEL(xml__escape_sign);
 	{
 		enum xml__label lc = *((enum xml__label*)xml__pop(xml, sizeof(enum xml__label)));
 		int sc = xml->sc;
