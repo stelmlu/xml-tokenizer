@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Root>
+<Root xml:space='default'>
   <Customer CustomerID="GREAL">
-    <CompanyName>Great Lakes &#57;&#x39; Food Market</CompanyName>
+    <CompanyName>Great Lakes &#57; &#x39; &lt;Food Market&gt;</CompanyName>
     <ContactName>Howard Snyder</ContactName>
     <ContactTitle>Marketing Manager</ContactTitle>
     <Phone>(503) 555-7555</Phone>
