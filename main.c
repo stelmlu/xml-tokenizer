@@ -12,6 +12,7 @@
 // TODO: Add to a header file.
 // TODO: README.md
 // TODO: Test with different xml files.
+// BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)"
 
 typedef struct xml__impl xml_t;
 
@@ -412,6 +413,7 @@ jp: switch (xml->lc) {
 				else JMP(xml__error);
 			}
 			else if (xml->ch == '[') {
+				enum xml__label lc = *((enum xml__label*)xml__pop(xml, sizeof(enum xml__label)));
 				NEXTCH();
 				int sc = xml->sc;
 				while (xml->ch != '[') {
@@ -437,9 +439,8 @@ jp: switch (xml->lc) {
 					xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
 					xml__push(xml, &(int){ xml->sc - sc }, sizeof(int));
 					xml__push(xml, &(uint8_t){ 't' }, sizeof(uint8_t));
-					if ((xml->sc - sc) > (sizeof(int) + 2 * sizeof(uint8_t))) TOK(xml__t8, XML_TEXT);
-					xml__pop_str(xml);
-					xml->ra = 0;
+					xml__push(xml, &(enum xml__label){ lc }, sizeof(enum xml__label));
+					xml->ra = 2;
 					RET();
 				}
 				else JMP(xml__error);
@@ -563,8 +564,19 @@ jp: switch (xml->lc) {
 		else {
 			xml__push(xml, &(int){ xml->ra }, sizeof(int));
 			CALL(xml__c19, xml__tag);
-			xml->ra = *(int*)xml__pop(xml, sizeof(int));
-			NEXTCH();
+			if (xml->ra == 2) {
+				const char* text = xml_get_text(xml);
+				xml__pop_str(xml);
+				xml->ra = *(int*)xml__pop(xml, sizeof(int));
+				while (*text != '\0') {
+					xml__push(xml, &(uint8_t){ *text }, sizeof(uint8_t));
+					++text;
+				}
+			}
+			else {
+				xml->ra = *(int*)xml__pop(xml, sizeof(int));
+				NEXTCH();
+			}
 			JMP(xml__tag_loop);
 		}
 	}

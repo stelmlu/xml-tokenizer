@@ -10,7 +10,7 @@
       <City>Eugene</City>
       <Region>OR</Region>
       <PostalCode>97403</PostalCode>
-      <Country>USA</Country>
+      <Country>USA <![CDATA[(USA)]]></Country>
     </FullAddress>
   </Customer>
 </Root>
