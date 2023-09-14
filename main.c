@@ -4,11 +4,11 @@
 #include <stdlib.h>
 
 // TODO: Support escape signs (done)
-// TODO: Allocate the stack and xml_t block as the same.
+// TODO: Reallocate stack on the stack overflow, instead of error
 // TODO: Ignore <!DOCTYPE ... > tags. (done)
 // TODO: Support trim, collapse and xml:space (done)
 // TODO: Create custom function for strcmp, itoa and toupper.
-// TODO: Function document
+// TODO: Function document (done).
 // TODO: Add to a header file.
 // TODO: README.md
 // TODO: Test with different xml files.
@@ -24,26 +24,69 @@ typedef enum {
 	XML_ERROR
 } xml_token_t;
 
+/** @brief Open a file reading xml.
+*   @param filename Name of the xml file.
+*   @return NULL on failure and a pointer to a xml structure on success.
+*/
 xml_t* xml_fopen(const char* filename);
 
+/** @brief Read the next token from the xml input.
+*   @param xml Pointer to a pointer to the xml structure.
+*   @return The next token.
+*/
 xml_token_t xml_next_token(xml_t* xml);
 
+/** @brief Return the name of a tag, can only be read after a XML_DECLARATION, XML_TAG_START, XML_ATTRIBUTE or XML_TAG_END token.
+*   @param xml Pointer to the xml structure.
+*   @return String with a name of a tag.
+*/
 const char* xml_get_name(xml_t* xml);
 
+/** @brief Return the value of an attribute, can only be read after a XML_DECLARATION or XML_ATTRIBUTE token.
+*   @param xml Pointer to the xml structure.
+*   @return String with the attribute.
+*/
 const char* xml_get_value(xml_t* xml);
 
+/** @brief Return the text between two tags, can only be read after a XML_TEXT token.
+*   @param xml Pointer to the xml structure.
+*   @return String with text.
+*/
 const char* xml_get_text(xml_t* xml);
 
+/** @brief Return a string with an error, can only be read after a XML_ERROR token.
+*   @param xml Pointer to the xml structure.
+*   @return String with the error message.
+*/
 const char* xml_get_error(xml_t* xml);
 
+/** @brief Get trim status.
+*	@param xml Pointer to a xml structure.
+*   @return value > 0 if enabled else it is disabled.
+*/
 int xml_get_trim(xml_t* xml);
 
+/** @bried Get collapse status.
+*   @param xml Pointer to a xml structure
+*   @return value > 0 if enabled else it is disabled.
+*/
 int xml_get_collapse(xml_t* xml);
 
+/** @brief Set trim status. If set to true, leading and trailing white spaces for text are removed.
+*   @param xml Pointer to a xml a structure
+*   @param value If value > 0 then trim is enabled else it is disabled.
+*/
 void xml_set_trim(xml_t* xml, int enable);
 
+/** @brief Set collapse status, If set to true, line-feed, carrage-return and tab are replace by space. Muliple spaces are collapsed to one space.
+*   @param xml Pointer to a xml structure.
+*   @return value If value > 0 then collapse is enabled else it is disabled.
+*/
 void xml_set_collapse(xml_t* xml, int enable);
 
+/** @brief Close the xml file and free memory for the xml structure
+*   @param xml Pointer to the xml structure.
+*/
 void xml_close(xml_t* xml);
 
 ///////////////////////////////////////////////////////////////////////////////
