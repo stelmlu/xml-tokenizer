@@ -70,7 +70,7 @@ const char xml__unexpected_sign[] = "): Unexpected sign.";
 struct xml__impl {
 	FILE* fp;
 	enum xml__label lc;
-	int ch, r1, row, col, sc;
+	int ch, ra, rb, rc, row, col, sc;
 	uint8_t* stack;
 };
 
@@ -218,8 +218,8 @@ jp: switch (xml->lc) {
 			if (xml->ch != '<') JMP(xml__error);
 			NEXTCH();
 		}
-		xml->r1 = 0;
-		while(xml->r1 == 0) {
+		xml->ra = 0;
+		while(xml->ra == 0) {
 			CALL(xml__c12, xml__tag);
 		}
 	}
@@ -252,12 +252,12 @@ jp: switch (xml->lc) {
 
 	LABEL(xml__value);
 	{
-		enum xml__label lc = *((enum xml__label*)xml__pop(xml, sizeof(enum xml__label)));
-		int ch = xml->ch;
-		if (ch != '\'' && ch != '\"') JMP(xml__error);
+		xml->ra = (int)*((enum xml__label*)xml__pop(xml, sizeof(enum xml__label)));
+		xml->rb = xml->ch;
+		if (xml->ch != '\'' && xml->ch != '\"') JMP(xml__error);
 		NEXTCH();
-		int sc = xml->sc;
-		while (xml->ch != ch) {
+		xml->rc = xml->sc;
+		while (xml->ch != xml->rb) {
 			if (xml->ch == '&') {
 				CALL(xml__c22, xml__esc);
 			}
@@ -268,9 +268,9 @@ jp: switch (xml->lc) {
 		}
 		NEXTCH();
 		xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
-		xml__push(xml, &(int){ xml->sc - sc }, sizeof(int));
+		xml__push(xml, &(int){ xml->sc - xml->rc }, sizeof(int));
 		xml__push(xml, &(uint8_t){ 'v' }, sizeof(uint8_t));
-		xml__push(xml, &(enum xml_label){ lc }, sizeof(enum xml__label));
+		xml__push(xml, &(enum xml_label){ (enum xml_label)xml->ra }, sizeof(enum xml__label));
 		RET();
 	}
 
@@ -322,7 +322,7 @@ jp: switch (xml->lc) {
 					CALL(xml__c20, xml__padding);
 					if (xml->ch != '<') JMP(xml__error);
 					NEXTCH();
-					xml->r1 = 0;
+					xml->ra = 0;
 					RET();
 				}
 				else JMP(xml__error);
@@ -355,7 +355,7 @@ jp: switch (xml->lc) {
 					xml__push(xml, &(uint8_t){ 't' }, sizeof(uint8_t));
 					if ((xml->sc - sc) > (sizeof(int) + 2 * sizeof(uint8_t))) TOK(xml__t8, XML_TEXT);
 					xml__pop_str(xml);
-					xml->r1 = 0;
+					xml->ra = 0;
 					RET();
 				}
 				else JMP(xml__error);
@@ -380,7 +380,7 @@ jp: switch (xml->lc) {
 				CALL(xml__c21, xml__padding);
 				if (xml->ch != '<') JMP(xml__error);
 				NEXTCH();
-				xml->r1 = 0;
+				xml->ra = 0;
 				RET();
 			}
 			else JMP(xml__error);
@@ -401,7 +401,7 @@ jp: switch (xml->lc) {
 			RET();
 		}
 		xml__pop_str(xml);
-		xml->r1 = xml->sc;
+		xml->ra = xml->sc;
 		LABEL(xml__tag_loop);
 		NEXTCH();
 		while (xml->ch != '<') {
@@ -416,9 +416,9 @@ jp: switch (xml->lc) {
 		NEXTCH();
 		if (xml->ch == '/') {
 			xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
-			xml__push(xml, &(int){ xml->sc - xml->r1 }, sizeof(int));
+			xml__push(xml, &(int){ xml->sc - xml->ra }, sizeof(int));
 			xml__push(xml, &(uint8_t){ 't' }, sizeof(uint8_t));
-			if ((xml->sc - xml->r1) > (sizeof(int) + 2*sizeof(uint8_t))) TOK(xml__t6, XML_TEXT);
+			if ((xml->sc - xml->ra) > (sizeof(int) + 2*sizeof(uint8_t))) TOK(xml__t6, XML_TEXT);
 			xml__pop_str(xml);
 			NEXTCH();
 			CALL(xml__c18, xml__name);
@@ -426,13 +426,13 @@ jp: switch (xml->lc) {
 			xml__pop_str(xml);
 			CALL(xml__c17, xml__padding);
 			if (xml->ch != '>') JMP(xml__error);
-			xml->r1 = 1;
+			xml->ra = 1;
 			RET();
 		}
 		else {
-			xml__push(xml, &(int){ xml->r1 }, sizeof(int));
+			xml__push(xml, &(int){ xml->ra }, sizeof(int));
 			CALL(xml__c19, xml__tag);
-			xml->r1 = *(int*)xml__pop(xml, sizeof(int));
+			xml->ra = *(int*)xml__pop(xml, sizeof(int));
 			NEXTCH();
 			JMP(xml__tag_loop);
 		}
