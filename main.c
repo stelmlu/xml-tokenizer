@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 // TODO: Support escape signs (done)
-// TODO: Reallocate stack on the stack overflow, instead of error
+// TODO: Reallocate stack on the stack overflow, instead of overflow error (done)
 // TODO: Ignore <!DOCTYPE ... > tags. (done)
 // TODO: Support trim, collapse and xml:space (done)
 // TODO: Create custom function for strcmp, itoa and toupper. (done)
@@ -138,14 +138,21 @@ struct xml__impl {
 	enum xml__label lc;
 	int ch, ra, rb, rc, row, col, sc, level, flags, xml_space_count;
 	struct xml__xml_space xml_space_stack[XML_SPACE_STACK_SIZE];
+	size_t stack_capacity;
 	uint8_t* stack;
 };
 
 inline void xml__push(xml_t* xml, const void* data, size_t size)
 {
-	if ((xml->sc + size) > STACK_SIZE) {
-		fprintf(stderr, "PANIC: Svg stack overflow.");
-		exit(-1);
+	if ((xml->sc + size) > xml->stack_capacity) {
+		size_t new_capacity = xml->stack_capacity * 2;
+		char* new_stack = realloc(xml->stack, new_capacity);
+		if (new_stack == NULL) {
+			fprintf(stderr, "PANIC failed to allocate memory for xml_t stack!");
+			exit(-1);
+		}
+		xml->stack = new_stack;
+		xml->stack_capacity = new_capacity;
 	}
 	for (size_t i = 0; i < size; i++) {
 		xml->stack[xml->sc++] = ((uint8_t*)data)[i];
@@ -309,6 +316,7 @@ xml_t* xml_fopen(const char* filename)
 	xml->level = 0;
 	xml->flags = (1 << FLAG_TRIM) | (1 << FLAG_COLLAPSE);
 	xml->xml_space_count = 0;
+	xml->stack_capacity = STACK_SIZE;
 
 	return xml;
 }
