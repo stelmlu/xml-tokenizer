@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE note [
+	<!ELEMENT note (to,from,heading,body)>
+	<!ELEMENT to (#PCDATA)>
+	<!ELEMENT from (#PCDATA)>
+	<!ELEMENT heading (#PCDATA)>
+	<!ELEMENT body (#PCDATA)>
+]>
 <Root>
   <Customer CustomerID="GREAL">
     <CompanyName>Great Lakes &#57; &#x39; &lt;Food Market&gt;</CompanyName>
@@ -10,7 +17,7 @@
       <City>Eugene</City>
       <Region>OR</Region>
       <PostalCode>97403</PostalCode>
-      <Country>USA <![CDATA[(USA)]]></Country>
+      <Country>USA <![CDATA[(USA)]]> Foobar<![CDATA[(Foobar)]]></Country>
     </FullAddress>
   </Customer>
 </Root>

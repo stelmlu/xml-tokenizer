@@ -105,6 +105,9 @@ void xml_close(xml_t* xml);
 #define FLAG_TRIM (0)
 #define FLAG_COLLAPSE (1)
 #define FLAG_PRESERVE (2)
+#define RET_COMMENT_OR_DOCTYPE (0)
+#define RET_TAG_END (1)
+#define RET_CDATA (2)
 
 enum xml__label {
 	xml__start,
@@ -112,7 +115,7 @@ enum xml__label {
 	xml__name,
 	xml__value,
 	xml__attr,
-	xml__tag, xml__tag_loop,
+	xml__tag, xml__tag_loop, xml__tag_loop_no_trim,
 	xml__escape_sign,
 	xml__error, xml__error_loop,
 	xml__c1, xml__c2, xml__c3, xml__c4, xml__c5, xml__c6, xml__c7, xml__c8, xml__c9, xml__c10,
@@ -303,8 +306,8 @@ jp: switch (xml->lc) {
 			if (xml->ch != '<') JMP(xml__error);
 			NEXTCH();
 		}
-		xml->ra = 0;
-		while(xml->ra == 0) {
+		xml->ra = RET_COMMENT_OR_DOCTYPE;
+		while(xml->ra == RET_COMMENT_OR_DOCTYPE) {
 			CALL(xml__c12, xml__tag);
 		}
 	}
@@ -407,7 +410,7 @@ jp: switch (xml->lc) {
 					CALL(xml__c20, xml__padding);
 					if (xml->ch != '<') JMP(xml__error);
 					NEXTCH();
-					xml->ra = 0;
+					xml->ra = RET_COMMENT_OR_DOCTYPE;
 					RET();
 				}
 				else JMP(xml__error);
@@ -440,7 +443,7 @@ jp: switch (xml->lc) {
 					xml__push(xml, &(int){ xml->sc - sc }, sizeof(int));
 					xml__push(xml, &(uint8_t){ 't' }, sizeof(uint8_t));
 					xml__push(xml, &(enum xml__label){ lc }, sizeof(enum xml__label));
-					xml->ra = 2;
+					xml->ra = RET_CDATA;
 					RET();
 				}
 				else JMP(xml__error);
@@ -465,7 +468,7 @@ jp: switch (xml->lc) {
 				CALL(xml__c21, xml__padding);
 				if (xml->ch != '<') JMP(xml__error);
 				NEXTCH();
-				xml->ra = 0;
+				xml->ra = RET_COMMENT_OR_DOCTYPE;
 				RET();
 			}
 			else JMP(xml__error);
@@ -516,6 +519,7 @@ jp: switch (xml->lc) {
 		if (xml->flags & (1 << FLAG_TRIM) && ((xml->flags & (1 << FLAG_PRESERVE)) == 0)) {
 			CALL(xml__c24, xml__padding); // Padding
 		}
+		LABEL(xml__tag_loop_no_trim);
 		xml->rb = '\0';
 		while (xml->ch != '<') {
 			if (xml->ch == '&') {
@@ -538,13 +542,13 @@ jp: switch (xml->lc) {
 				NEXTCH();
 			}
 		}
-		if (xml->flags & (1 << FLAG_TRIM) && ((xml->flags & (1 << FLAG_PRESERVE)) == 0) && xml->sc != xml->ra) {
+		NEXTCH();
+		if (xml->ch != '!' && (xml->flags & (1 << FLAG_TRIM) && ((xml->flags & (1 << FLAG_PRESERVE)) == 0) && xml->sc != xml->ra)) {
 			char ch = xml->stack[xml->sc - 1];
 			while (xml->sc > 0 && (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\f' || ch == '\t')) {
 				ch = xml->stack[--(xml->sc) - 1];
 			}
 		}
-		NEXTCH();
 		if (xml->ch == '/') {
 			xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
 			xml__push(xml, &(int){ xml->sc - xml->ra }, sizeof(int));
@@ -558,13 +562,13 @@ jp: switch (xml->lc) {
 			xml__pop_str(xml);
 			CALL(xml__c17, xml__padding);
 			if (xml->ch != '>') JMP(xml__error);
-			xml->ra = 1;
+			xml->ra = RET_TAG_END;
 			RET();
 		}
 		else {
 			xml__push(xml, &(int){ xml->ra }, sizeof(int));
 			CALL(xml__c19, xml__tag);
-			if (xml->ra == 2) {
+			if (xml->ra == RET_CDATA) {
 				const char* text = xml_get_text(xml);
 				xml__pop_str(xml);
 				xml->ra = *(int*)xml__pop(xml, sizeof(int));
@@ -572,6 +576,8 @@ jp: switch (xml->lc) {
 					xml__push(xml, &(uint8_t){ *text }, sizeof(uint8_t));
 					++text;
 				}
+				NEXTCH();
+				JMP(xml__tag_loop_no_trim);
 			}
 			else {
 				xml->ra = *(int*)xml__pop(xml, sizeof(int));
