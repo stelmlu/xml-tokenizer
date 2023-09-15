@@ -12,6 +12,7 @@
 // TODO: README.md
 // TODO: Test with different xml files.
 // BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)" (done)
+// TODO: Fix warning when compiling for x64 code.
 
 typedef struct xml__impl xml_t;
 
@@ -161,7 +162,7 @@ inline void xml__push(xml_t* xml, const void* data, size_t size)
 
 inline const void* xml__pop(xml_t* xml, size_t size)
 {
-	xml->sc -= size;
+	xml->sc -= (int)size;
 	return &(xml->stack[xml->sc]);
 }
 
@@ -193,7 +194,7 @@ inline void xml__push_str(xml_t* xml, const char* str, uint8_t postfix) {
 
 	size_t len = xml__strlen(str);
 	xml__push(xml, str, len + sizeof(uint8_t));
-	xml__push(xml, &(uint32_t){ len + sizeof(uint8_t) }, sizeof(uint32_t));
+	xml__push(xml, &(int){ (int)(len + sizeof(uint8_t)) }, sizeof(int));
 	xml__push(xml, &(uint8_t){ postfix }, sizeof(uint8_t));
 }
 
@@ -248,13 +249,13 @@ inline int xml__nextch(xml_t* xml)
 	if (c == EOF) {
 		if (feof(xml->fp)) {
 			xml__push(xml, xml__error_unexpected_end_of_file, sizeof(xml__error_unexpected_end_of_file));
-			xml__push(xml, &(uint32_t){ sizeof(xml__error_unexpected_end_of_file) }, sizeof(uint32_t));
+			xml__push(xml, &(int){ (int)sizeof(xml__error_unexpected_end_of_file) }, sizeof(int));
 			xml__push(xml, &(uint8_t){ 'e' }, sizeof(uint8_t));
 		}
 		else {
-			uint32_t sc = xml->sc;
+			size_t sc = xml->sc;
 			xml__push(xml, xml__error_while_reading_file, sizeof(xml__error_while_reading_file));
-			xml__push(xml, &(uint32_t){ sizeof(xml__error_while_reading_file) }, sizeof(uint32_t));
+			xml__push(xml, &(int){ (int)sizeof(xml__error_while_reading_file) }, sizeof(int));
 			xml__push(xml, &(uint8_t){ 'e' }, sizeof(uint8_t));
 		}
 		return 0;
@@ -376,7 +377,7 @@ jp: switch (xml->lc) {
 			NEXTCH();
 		}
 		xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
-		xml__push(xml, &(int){ xml->sc - sc }, sizeof(int));
+		xml__push(xml, &(int){ (int)(xml->sc - sc) }, sizeof(int));
 		xml__push(xml, &(uint8_t){ 'n' }, sizeof(uint8_t));
 		xml__push(xml, &(enum xml_label){ lc }, sizeof(enum xml__label));
 		RET();
@@ -597,7 +598,7 @@ jp: switch (xml->lc) {
 			xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
 			xml__push(xml, &(int){ xml->sc - xml->ra }, sizeof(int));
 			xml__push(xml, &(uint8_t){ 't' }, sizeof(uint8_t));
-			if ((xml->sc - xml->ra) > (sizeof(int) + 2*sizeof(uint8_t))) TOK(xml__t6, XML_TEXT);
+			if (((size_t)xml->sc - xml->ra) > (sizeof(int) + 2*sizeof(uint8_t))) TOK(xml__t6, XML_TEXT);
 			xml__pop_str(xml);
 			NEXTCH();
 			CALL(xml__c18, xml__name);
@@ -717,8 +718,8 @@ jp: switch (xml->lc) {
 
 const char* xml_get_error(xml_t* xml) {
 	if (xml->stack[xml->sc - sizeof(uint8_t)] == 'e') {
-		uint32_t cnt = *(int*)xml__peek(xml, sizeof(int), sizeof(uint8_t));
-		return &xml->stack[xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
+		int cnt = *(int*)xml__peek(xml, sizeof(int), sizeof(uint8_t));
+		return &xml->stack[(size_t)xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
 	}
 	return NULL;
 }
@@ -726,12 +727,12 @@ const char* xml_get_error(xml_t* xml) {
 const char* xml_get_name(xml_t* xml) {
 	if (xml->stack[xml->sc - sizeof(uint8_t)] == 'n') {
 		uint32_t cnt = *(int*)xml__peek(xml, sizeof(int), sizeof(uint8_t));
-		return &xml->stack[xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
+		return &xml->stack[(size_t)xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
 	}
 	else if (xml->stack[xml->sc - sizeof(uint8_t)] == 'v') {
 		uint32_t cnt = *((int*)xml__peek(xml, sizeof(int), sizeof(uint8_t)));
 		cnt += *((int*)xml__peek(xml, sizeof(int), cnt + sizeof(int) + 2*sizeof(uint8_t)));
-		return &xml->stack[xml->sc - cnt - 2*sizeof(int) - 2*sizeof(uint8_t)];
+		return &xml->stack[(size_t)xml->sc - cnt - 2*sizeof(int) - 2*sizeof(uint8_t)];
 	}
 	return NULL;
 }
@@ -739,7 +740,7 @@ const char* xml_get_name(xml_t* xml) {
 const char* xml_get_value(xml_t* xml) {
 	if (xml->stack[xml->sc - sizeof(uint8_t)] == 'v') {
 		uint32_t cnt = *(int*)xml__peek(xml, sizeof(int), sizeof(uint8_t));
-		return &xml->stack[xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
+		return &xml->stack[(size_t)xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
 	}
 	return NULL;
 }
@@ -748,7 +749,7 @@ const char* xml_get_text(xml_t* xml)
 {
 	if (xml->stack[xml->sc - sizeof(uint8_t)] == 't') {
 		uint32_t cnt = *(int*)xml__peek(xml, sizeof(int), sizeof(uint8_t));
-		return &xml->stack[xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
+		return &xml->stack[(size_t)xml->sc - cnt - sizeof(int) - sizeof(uint8_t)];
 	}
 	return NULL;
 }
