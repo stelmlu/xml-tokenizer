@@ -12,7 +12,7 @@
 // TODO: README.md
 // TODO: Test with different xml files.
 // BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)" (done)
-// TODO: Fix warning when compiling for x64 code.
+// TODO: Fix warning when compiling for x64 code. (done)
 
 typedef struct xml__impl xml_t;
 
@@ -452,9 +452,6 @@ jp: switch (xml->lc) {
 						NEXTCH();
 					}
 					NEXTCH();
-					CALL(xml__c20, xml__padding);
-					if (xml->ch != '<') JMP(xml__error);
-					NEXTCH();
 					xml->ra = RET_COMMENT_OR_DOCTYPE;
 					RET();
 				}
@@ -560,7 +557,7 @@ jp: switch (xml->lc) {
 		xml__pop_str(xml);
 		xml->ra = xml->sc;
 		LABEL(xml__tag_loop);
-		NEXTCH();
+		if(xml->ch == '>') NEXTCH();
 		if (xml->flags & (1 << FLAG_TRIM) && ((xml->flags & (1 << FLAG_PRESERVE)) == 0)) {
 			CALL(xml__c24, xml__padding); // Padding
 		}
