@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -7,12 +6,12 @@
 // TODO: Reallocate stack on the stack overflow, instead of error
 // TODO: Ignore <!DOCTYPE ... > tags. (done)
 // TODO: Support trim, collapse and xml:space (done)
-// TODO: Create custom function for strcmp, itoa and toupper.
+// TODO: Create custom function for strcmp, itoa and toupper. (done)
 // TODO: Function document (done).
 // TODO: Add to a header file.
 // TODO: README.md
 // TODO: Test with different xml files.
-// BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)"
+// BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)" (done)
 
 typedef struct xml__impl xml_t;
 
@@ -177,11 +176,39 @@ inline const char* xml__pop_str(xml_t* xml) {
 	return str;
 }
 
+inline size_t xml__strlen(const char* str) {
+	const char* n = str;
+	while (*n != '\0') n++;
+	return n - str;
+}
+
 inline void xml__push_str(xml_t* xml, const char* str, uint8_t postfix) {
-	size_t len = strlen(str);
+
+	size_t len = xml__strlen(str);
 	xml__push(xml, str, len + sizeof(uint8_t));
 	xml__push(xml, &(uint32_t){ len + sizeof(uint8_t) }, sizeof(uint32_t));
 	xml__push(xml, &(uint8_t){ postfix }, sizeof(uint8_t));
+}
+
+inline int xml__strncmp(const char* a, const char* b, size_t n)
+{
+	while (n && *a && (*a == *b)) {
+		++a; ++b; n--;
+	}
+	if (n == 0) return 0;
+	else return (*(uint8_t*)a - *(uint8_t*)b);
+}
+
+inline char* xml__itoa(char* buf, size_t bufsize, int val, int base)
+{
+	size_t i = bufsize - 2;
+	buf[bufsize - 1] = '\0';
+
+	for (; val && i; --i, val /= base) {
+		buf[i] = "0123456789abcdef"[val % base];
+	}
+
+	return &buf[i + 1];
 }
 
 inline char xml__toupper(char c)
@@ -248,10 +275,19 @@ inline int xml__isalnum(char ch)
 
 xml_t* xml_fopen(const char* filename)
 {
-	FILE* fp = fopen(filename, "r");
+	FILE* fp = NULL;
+
+#ifdef _MSC_VER
+	errno_t err = fopen_s(&(fp), filename, "r");
+	if (err) {
+		return NULL;
+	}
+#else
+	fp = fopen(filename, "r");
 	if (fp == NULL) {
 		return NULL;
 	}
+#endif
 
 	xml_t* xml = malloc(sizeof(xml_t));
 	if (xml == NULL) {
@@ -290,7 +326,7 @@ jp: switch (xml->lc) {
 		if (xml->ch == '?') {
 			NEXTCH();
 			CALL(xml__c2, xml__name);
-			if(strcmp("xml", xml__pop_str(xml)) != 0) JMP(xml__error);
+			if(xml__strncmp(xml__pop_str(xml), "xml", 3) != 0) JMP(xml__error);
 			CALL(xml__c3, xml__padding);
 			while (xml->ch != '?') {
 				CALL(xml__c9, xml__attr);
@@ -427,7 +463,7 @@ jp: switch (xml->lc) {
 				xml__push(xml, &(uint8_t){ '\0' }, sizeof(uint8_t));
 				int cnt = xml->sc - sc;
 				xml->sc = sc;
-				if (strcmp(&xml->stack[xml->sc], "CDATA") == 0) {
+				if (xml__strncmp(&xml->stack[xml->sc], "CDATA", 5) == 0) {
 					int m1 = xml->ch;
 					NEXTCH();
 					int m2 = xml->ch;
@@ -479,12 +515,12 @@ jp: switch (xml->lc) {
 		CALL(xml__c14, xml__padding);
 		while (xml->ch != '>' && xml->ch != '/') {
 			CALL(xml__c15, xml__attr);
-			if (strcmp(xml_get_name(xml), "xml:space") == 0) {
+			if (xml__strncmp(xml_get_name(xml), "xml:space", 9) == 0) {
 				if (xml->xml_space_count > (XML_SPACE_STACK_SIZE - 1)) {
 					fprintf(stderr, "PANIC Maximum %d number of xml:space attribute have been reached.", XML_SPACE_STACK_SIZE);
 					exit(-1);
 				}
-				if (strcmp(xml_get_value(xml), "preserve") == 0) {
+				if (xml__strncmp(xml_get_value(xml), "preserve", 8) == 0) {
 					xml->xml_space_stack[xml->xml_space_count++] = (struct xml__xml_space){
 						.level = xml->level,
 						.preserve = (xml->flags & (1 << FLAG_PRESERVE)) > 0
@@ -633,19 +669,19 @@ jp: switch (xml->lc) {
 			}
 			else JMP(9000);
 		}
-		else if (strcmp(&xml->stack[xml->sc], "amp") == 0) {
+		else if (xml__strncmp(&xml->stack[xml->sc], "amp", 3) == 0) {
 			xml__push(xml, &(uint8_t){ '&' }, sizeof(uint8_t));
 		}
-		else if (strcmp(&xml->stack[xml->sc], "apos") == 0) {
+		else if (xml__strncmp(&xml->stack[xml->sc], "apos", 4) == 0) {
 			xml__push(xml, &(uint8_t){ '\'' }, sizeof(uint8_t));
 		}
-		else if (strcmp(&xml->stack[xml->sc], "lt") == 0) {
+		else if (xml__strncmp(&xml->stack[xml->sc], "lt", 2) == 0) {
 			xml__push(xml, &(uint8_t){ '<' }, sizeof(uint8_t));
 		}
-		else if(strcmp(&xml->stack[xml->sc], "gt") == 0) {
+		else if(xml__strncmp(&xml->stack[xml->sc], "gt", 2) == 0) {
 			xml__push(xml, &(uint8_t){ '>' }, sizeof(uint8_t));
 		}
-		else if (strcmp(&xml->stack[xml->sc], "quot") == 0) {
+		else if (xml__strncmp(&xml->stack[xml->sc], "quot", 4) == 0) {
 			xml__push(xml, &(uint8_t){ '\"' }, sizeof(uint8_t));
 		}
 		else JMP(xml__error);
@@ -658,11 +694,11 @@ jp: switch (xml->lc) {
 		char buf[32];
 		int sc = xml->sc;
 		xml__push(xml, xml__error_prefix, sizeof(xml__error_prefix) - 1);
-		const char* rowstr = _itoa(xml->row, buf, 10);
-		xml__push(xml, rowstr, strlen(rowstr));
+		const char* rowstr = xml__itoa(buf, sizeof(buf), xml->row, 10);
+		xml__push(xml, rowstr, xml__strlen(rowstr));
 		xml__push(xml, &(uint8_t){','}, sizeof(uint8_t));
-		const char* colstr = _itoa(xml->col, buf, 10);
-		xml__push(xml, colstr, strlen(colstr));
+		const char* colstr = xml__itoa(buf, sizeof(buf), xml->col, 10);
+		xml__push(xml, colstr, xml__strlen(colstr));
 		xml__push(xml, xml__unexpected_sign, sizeof(xml__unexpected_sign));
 		xml__push(xml, &(uint32_t){ xml->sc - sc }, sizeof(uint32_t));
 		xml__push(xml, &(uint8_t){ 'e' }, sizeof(uint8_t));
