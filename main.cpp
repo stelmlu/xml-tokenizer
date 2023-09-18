@@ -13,11 +13,10 @@
 // TODO: xml with different xml files.
 // BUG: Trim away space after a CDATA, ex: USA <![CDATA[(USA)]]> sould be -> "USA (USA)" and NOT "USA(USA)" (done)
 // TODO: Fix warning when compiling for x64 code. (done)
+// TODO: Compile with C++ (done)
 
 #define XML_IMPLEMENTATION
 #include "xml.h"
-
-#include "print_xml.h"
 
 int main()
 {
@@ -27,7 +26,32 @@ int main()
 		exit(-1);
 	}
 
-	print_xml(xml);
+	xml_token_t tok = xml_next_token(xml);
+	while (tok != XML_DOCUMENT_END) {
+		switch (tok) {
+		case XML_DECLARATION: {
+			const char* name = xml_get_name(xml);
+			const char* value = xml_get_value(xml);
+			printf("Declaration: %s: \'%s\'\n", name, value);
+		}	break;
+		case XML_TAG_START:
+			printf("Tag start: %s\n", xml_get_name(xml));
+			break;
+		case XML_TAG_END:
+			printf("Tag end: %s\n", xml_get_name(xml));
+			break;
+		case XML_TEXT:
+			printf("Text: \"%s\"\n", xml_get_text(xml));
+			break;
+		case XML_ATTRIBUTE:
+			printf("Attribute: %s: \'%s\'\n", xml_get_name(xml), xml_get_value(xml));
+			break;
+		case XML_ERROR:
+			fprintf(stderr, "%s\n", xml_get_error(xml));
+			exit(-1);
+		}
+		tok = xml_next_token(xml);
+	}
 
 	xml_close(xml);
 

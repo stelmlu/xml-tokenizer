@@ -15,18 +15,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="print_xml.c">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="xml.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="print_xml.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
