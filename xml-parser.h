@@ -1,20 +1,60 @@
-#ifndef __XML_H__
-#define __XML_H__
+/* xml-parser.h - v0.1 - public domain data structures - Stefan Elmlund 2023
+*
+*  This is a single-header-file [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
+*  library that parser xml file for C (also works in C++)
+*
+*  To use this library, do this in *one* C or C++ file:
+*    #define XML_PARSER_IMPLEMENTATION
+*    #include "xml-parser.h"
+*
+*  TABLE OF CONTENTS
+*    Table of Contents
+*    Compile-time options
+*    License
+*    Documentation
+*
+*  COMPILE-TIME OPTIONS
+*
+*  #define XML_REALLOC(context,ptr,size) better_realloc
+*  #define XML_FREE(context,ptr)         btter_free
+* 
+*   There defines only need to be set in the file containing XML_PARSER_IMPLEMENTATION
+*  
+*   By default the stdlib realloc() and free() is used. You can defines your own by
+*   defining these symbols. You must either define both, or neither.
+*
+*   Note that at the moment, 'context' will always be NULL.
+* 
+* #define XML_FOPEN  better_fopen
+* #define XML_FGETC  better_fgetc
+* #define XML_FCLOSE better_fclose
+* 
+*   There defines only need to be set in the file containing XML_PARSER_IMPLEMENTATION
+* 
+*	By default the stdlib fopen(), fgetc() and free() is used. You can defines you own
+*   by defining these symbols. You most either define all three, or neither
+*
+*  LICENSE
+*
+*  DOCUMENTATION
+*/
+
+#ifndef __XML_PARSER_H__
+#define __XML_PARSER_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stdint.h>
-#include <stdlib.h>
 
 	typedef struct xml__impl xml_t;
 
 	typedef enum {
 		XML_DECLARATION,
-		XML_DOCUMENT_BEGIN, XML_DOCUMENT_END,
-		XML_TAG_START, XML_TAG_END,
-		XML_ATTRIBUTE,
+		XML_START_DOCUMENT, XML_END_DOCUMENT,
+		XML_START_TAG, XML_END_TAG,
+		XML_START_ATTRIBUTE, XML_END_ATTRIBUTE, XML_ATTRIBUTE,
 		XML_TEXT,
 		XML_ERROR
 	} xml_token_t;
@@ -84,7 +124,38 @@ extern "C" {
 	*/
 	void xml_close(xml_t* xml);
 
-#ifdef XML_IMPLEMENTATION
+#ifdef XML_PARSER_IMPLEMENTATION
+
+#if defined(XML_REALLOC) && !defined(XML_FREE) || !defined(XML_REALLOC) && defined(XML_FREE)
+#error "You must define both XML_REALLOC and XML_FREE, or neither."
+#endif
+#if !defined(XML_REALLOC) && !defined(XML_FREE)
+#include <stdlib.h>
+#define XML_REALLOC(c,p,s) realloc(p,s)
+#define XML_FREE(c,p)      free(p)
+#endif
+
+#if defined(XML_FOPEN) && !defined(XML_FGETC) || defined(XML_FOPEN) && !defined(XML_FCLOSE)
+#error "You must define both XML_FOPEN, XML_FGETC and XML_FCLOSE, or neither."
+#endif
+
+#if defined(XML_FGETC) && !defined(XML_FOPEN) || defined(XML_FGETC) && !defined(XML_FCLOSE)
+#error "You must define both XML_FOPEN, XML_FGETC and XML_FCLOSE, or neither."
+#endif
+
+#if defined(XML_FCLOSE) && !defined(XML_FOPEN) || defined(XML_FCLOSE) && !defined(XML_FGETC)
+#error "You must define both XML_FOPEN, XML_FGETC and XML_FCLOSE, or neither."
+#endif
+
+#if !defined(XML_FOPEN) && !defined(XML_FGETC) && !defined(XML_FCLOSE)
+#ifdef _MSC_VER
+#define XML_FOPEN(fp,filename,mode) fopen_s(&(fp),filename,mode)
+#else
+#define XML_FOPEN(fp,filename,mode) (((fp=fopen(filename,mode))==NULL)?(feof(fp)||ferror(fp)):(0))
+#endif
+#define XML_FGETC(fp) fgetc(fp)
+#define XML_FCLOSE(fp) fclose(fp)
+#endif
 
 #define STACK_SIZE (4096)
 #define XML_SPACE_STACK_SIZE (32)
@@ -135,11 +206,11 @@ extern "C" {
 		uint8_t* stack;
 	};
 
-	inline void xml__push(xml_t* xml, const void* data, size_t size)
+	static void xml__push(xml_t* xml, const void* data, size_t size)
 	{
 		if ((xml->sc + size) > xml->stack_capacity) {
 			size_t new_capacity = xml->stack_capacity * 2;
-			uint8_t* new_stack = (uint8_t*)realloc(xml->stack, new_capacity);
+			uint8_t* new_stack = (uint8_t*)XML_REALLOC(NULL, xml->stack, new_capacity);
 			if (new_stack == NULL) {
 				fprintf(stderr, "PANIC failed to allocate memory for xml_t stack!");
 				exit(-1);
@@ -152,37 +223,37 @@ extern "C" {
 		}
 	}
 
-	inline const void* xml__pop(xml_t* xml, size_t size)
+	static const void* xml__pop(xml_t* xml, size_t size)
 	{
 		xml->sc -= (int)size;
 		return &(xml->stack[xml->sc]);
 	}
 
-	inline const void* xml__peek(xml_t* xml, size_t size, size_t index)
+	static const void* xml__peek(xml_t* xml, size_t size, size_t index)
 	{
 		return &(xml->stack[xml->sc - size - index]);
 	}
 
-	inline const char* xml__peek_str(xml_t* xml)
+	static const char* xml__peek_str(xml_t* xml)
 	{
 		int size = *((uint32_t*)&xml->stack[xml->sc - sizeof(int)]);
 		return (const char*)(xml->stack + xml->sc - sizeof(uint32_t) - size - 1);
 	}
 
-	inline const char* xml__pop_str(xml_t* xml) {
+	static const char* xml__pop_str(xml_t* xml) {
 		int size = *((int*)&xml->stack[xml->sc - sizeof(int) - sizeof(uint8_t)]);
 		const char* str = (const char*)(xml->stack + xml->sc - sizeof(int) - size - sizeof(uint8_t));
 		xml->sc -= (sizeof(int) + size + sizeof(uint8_t));
 		return str;
 	}
 
-	inline size_t xml__strlen(const char* str) {
+	static size_t xml__strlen(const char* str) {
 		const char* n = str;
 		while (*n != '\0') n++;
 		return n - str;
 	}
 
-	inline void xml__push_str(xml_t* xml, const char* str, uint8_t postfix) {
+	static void xml__push_str(xml_t* xml, const char* str, uint8_t postfix) {
 
 		int  len = (int)(xml__strlen(str) + sizeof(uint8_t));
 		xml__push(xml, str, len);
@@ -190,7 +261,7 @@ extern "C" {
 		xml__push(xml, &postfix, sizeof(uint8_t));
 	}
 
-	inline int xml__strncmp(const char* a, const char* b, size_t n)
+	static int xml__strncmp(const char* a, const char* b, size_t n)
 	{
 		while (n && *a && (*a == *b)) {
 			++a; ++b; n--;
@@ -199,7 +270,7 @@ extern "C" {
 		else return (*(uint8_t*)a - *(uint8_t*)b);
 	}
 
-	inline char* xml__itoa(char* buf, size_t bufsize, int val, int base)
+	static char* xml__itoa(char* buf, size_t bufsize, int val, int base)
 	{
 		size_t i = bufsize - 2;
 		buf[bufsize - 1] = '\0';
@@ -211,13 +282,13 @@ extern "C" {
 		return &buf[i + 1];
 	}
 
-	inline char xml__toupper(char c)
+	static char xml__toupper(char c)
 	{
 		if (c >= 'a' && c <= 'z') return 'A' - 'a' + c;
 		return c;
 	}
 
-	void xml__restore_xml_space_stack(xml_t* xml)
+	static void xml__restore_xml_space_stack(xml_t* xml)
 	{
 		if (xml->xml_space_count > 0) {
 			struct xml__xml_space* xml_space = &xml->xml_space_stack[xml->xml_space_count - 1];
@@ -234,9 +305,9 @@ extern "C" {
 		xml->level--;
 	}
 
-	inline int xml__nextch(xml_t* xml)
+	static int xml__nextch(xml_t* xml)
 	{
-		int c = fgetc(xml->fp);
+		int c = XML_FGETC(xml->fp);
 
 		if (c == EOF) {
 			uint8_t postfix = 'e';
@@ -268,7 +339,7 @@ extern "C" {
 		return 1;
 	}
 
-	inline int xml__isalnum(char ch)
+	static int xml__isalnum(char ch)
 	{
 		if (ch >= 'a' && ch <= 'z') return 1;
 		else if (ch >= 'A' && ch <= 'Z') return 1;
@@ -280,19 +351,11 @@ extern "C" {
 	{
 		FILE* fp = NULL;
 
-#ifdef _MSC_VER
-		errno_t err = fopen_s(&(fp), filename, "r");
-		if (err) {
+		if (XML_FOPEN(fp, filename, "r") != 0) {
 			return NULL;
 		}
-#else
-		fp = fopen(filename, "r");
-		if (fp == NULL) {
-			return NULL;
-		}
-#endif
 
-		xml_t* xml = (xml_t*)malloc(sizeof(xml_t));
+		xml_t* xml = (xml_t*)XML_REALLOC(NULL, NULL, sizeof(xml_t));
 		if (xml == NULL) {
 			fprintf(stderr, "PANIC: Failed to allocate memory for svg structure.");
 			exit(-1);
@@ -352,7 +415,7 @@ extern "C" {
 			}
 		}
 		else JMP(xml__error);
-		for (;;) TOK(xml__t1, XML_DOCUMENT_END);
+		for (;;) TOK(xml__t1, XML_END_DOCUMENT);
 
 		LABEL(xml__padding);
 		while (xml->ch == ' ' || xml->ch == '\r' || xml->ch == '\n' || xml->ch == '\t' || xml->ch == '\f') NEXTCH();
@@ -535,7 +598,7 @@ extern "C" {
 			}
 			CALL(xml__c13, xml__name);
 			xml->level++;
-			TOK(xml__t3, XML_TAG_START);
+			TOK(xml__t3, XML_START_TAG);
 			CALL(xml__c14, xml__padding);
 			while (xml->ch != '>' && xml->ch != '/') {
 				CALL(xml__c15, xml__attr);
@@ -563,7 +626,7 @@ extern "C" {
 				CALL(xml__c16, xml__padding);
 			}
 			if (xml->ch == '/') {
-				TOK(xml__t5, XML_TAG_END);
+				TOK(xml__t5, XML_END_TAG);
 				xml__restore_xml_space_stack(xml);
 				xml__pop_str(xml);
 				RET();
@@ -620,7 +683,7 @@ extern "C" {
 				xml__pop_str(xml);
 				NEXTCH();
 				CALL(xml__c18, xml__name);
-				TOK(xml__t7, XML_TAG_END);
+				TOK(xml__t7, XML_END_TAG);
 				xml__restore_xml_space_stack(xml);
 				xml__pop_str(xml);
 				CALL(xml__c17, xml__padding);
@@ -821,9 +884,9 @@ extern "C" {
 
 	void xml_close(xml_t* xml)
 	{
-		fclose(xml->fp);
-		free(xml->stack);
-		free(xml);
+		XML_FCLOSE(xml->fp);
+		XML_FREE(NULL, xml->stack);
+		XML_FREE(NULL, xml);
 	}
 
 #undef STACK_SIZE

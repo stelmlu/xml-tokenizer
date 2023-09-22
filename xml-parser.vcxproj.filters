@@ -20,7 +20,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="xml.h">
+    <ClInclude Include="xml-parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
