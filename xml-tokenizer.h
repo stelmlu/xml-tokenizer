@@ -1,46 +1,50 @@
-/* xml-parser.h - v0.1 - public domain data structures - Stefan Elmlund 2023
+/* xml-tokenizer.h - v0.1 - public domain data structures - Stefan Elmlund 2023
 *
 *  This is a single-header-file [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
-*  library that parser xml file for C (also works in C++)
+*  library that tokenize xml file for C (also works in C++)
+* 
+*  The easiest way to install the library to your C/C++ project is to copy 'n' paste the xml-tokenizer.h
+*  to your project and do this in *one* C or C++ file:
 *
-*  To use this library, do this in *one* C or C++ file:
-*    #define XML_PARSER_IMPLEMENTATION
-*    #include "xml-parser.h"
-*
-*  TABLE OF CONTENTS
-*    Table of Contents
-*    Compile-time options
-*    License
-*    Documentation
+*    #define XML_TOKENIZER_IMPLEMENTATION
+*    #include "xml-tokenizer.h"
 *
 *  COMPILE-TIME OPTIONS
 *
-*  #define XML_REALLOC(context,ptr,size) better_realloc
-*  #define XML_FREE(context,ptr)         btter_free
-* 
-*   There defines only need to be set in the file containing XML_PARSER_IMPLEMENTATION
+*    #define XML_REALLOC(context,ptr,size) better_realloc
+*    #define XML_FREE(context,ptr)         btter_free
 *  
-*   By default the stdlib realloc() and free() is used. You can defines your own by
-*   defining these symbols. You must either define both, or neither.
+*      These defines only need to be set in the file containing XML_TOKENIZER_IMPLEMENTATION    
 *
-*   Note that at the moment, 'context' will always be NULL.
-* 
-* #define XML_FOPEN  better_fopen
-* #define XML_FGETC  better_fgetc
-* #define XML_FCLOSE better_fclose
-* 
-*   There defines only need to be set in the file containing XML_PARSER_IMPLEMENTATION
-* 
-*	By default the stdlib fopen(), fgetc() and free() is used. You can defines you own
-*   by defining these symbols. You most either define all three, or neither
+*      By default the stdlib realloc() and free() is used. You can defines your own by
+*      defining these symbols. You must either define both, or neither.
+*
+*      Note that at the moment, 'context' will always be NULL.
+*
+*    #define XML_FOPEN(fp,filename,mode) better_fopen
+*    #define XML_FGETC(fp)               better_fgetc
+*    #define XML_FCLOSE(fp)              better_fclose
+*
+*      These defines only need to be set in the file containing XML_TOKENIZER_IMPLEMENTATION
+*
+*      By default the stdlib fopen(), fgetc() and free() is used. You can defines you own
+*      by defining these symbols. You most either define all three, or neither
 *
 *  LICENSE
+* 
+*    Placed in the public domain and also MIT licensed.
+*    See end of file for detailed license information.
+*  
+*  EXAMPLE
 *
-*  DOCUMENTATION
+*    You can find examples how to parser a sample xml file that contains a book catalog using C and C++ (C++11).
+*
+*      example/parser_catalog.c
+*      example/xml_dom.hpp
 */
 
-#ifndef __XML_PARSER_H__
-#define __XML_PARSER_H__
+#ifndef __XML_TOKENIZER_H__
+#define __XML_TOKENIZER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +58,7 @@ extern "C" {
 		XML_DECLARATION,
 		XML_START_DOCUMENT, XML_END_DOCUMENT,
 		XML_START_TAG, XML_END_TAG,
-		XML_START_ATTRIBUTE, XML_END_ATTRIBUTE, XML_ATTRIBUTE,
+		XML_START_ATTRIBUTES, XML_END_ATTRIBUTES, XML_ATTRIBUTE,
 		XML_TEXT,
 		XML_ERROR
 	} xml_token_t;
@@ -83,7 +87,7 @@ extern "C" {
 	*/
 	const char* xml_get_value(xml_t* xml);
 
-	/** @brief Return the text between two tags, can only be read after a XML_TEXT token.
+	/** @brief Return the text for a tag, can only be read after a XML_TEXT token.
 	*   @param xml Pointer to the xml structure.
 	*   @return String with text.
 	*/
@@ -97,7 +101,7 @@ extern "C" {
 
 	/** @brief Get trim status.
 	*	@param xml Pointer to a xml structure.
-	*   @return value > 0 if enabled else it is disabled.
+	*   @return value > 0 if enabled else it's disabled.
 	*/
 	int xml_get_trim(xml_t* xml);
 
@@ -107,7 +111,7 @@ extern "C" {
 	*/
 	int xml_get_collapse(xml_t* xml);
 
-	/** @brief Set trim status. If set to true, leading and trailing white spaces for text are removed.
+	/** @brief Set trim status. If set to true, leading and trailing white-spaces for the text are removed.
 	*   @param xml Pointer to a xml a structure
 	*   @param value If value > 0 then trim is enabled else it is disabled.
 	*/
@@ -124,7 +128,7 @@ extern "C" {
 	*/
 	void xml_close(xml_t* xml);
 
-#ifdef XML_PARSER_IMPLEMENTATION
+#ifdef XML_TOKENIZER_IMPLEMENTATION
 
 #if defined(XML_REALLOC) && !defined(XML_FREE) || !defined(XML_REALLOC) && defined(XML_FREE)
 #error "You must define both XML_REALLOC and XML_FREE, or neither."
@@ -185,7 +189,7 @@ extern "C" {
 		xml__c11, xml__c12, xml__c13, xml__c14, xml__c15, xml__c16, xml__c17, xml__c18, xml__c19,
 		xml__c20, xml__c21, xml__c22, xml__c23, xml__c24,
 		xml__l1, xml__l2, xml__l3, xml__l4,
-		xml__t1, xml__t2, xml__t3, xml__t4, xml__t5, xml__t6, xml__t7, xml__t8
+		xml__t1, xml__t2, xml__t3, xml__t4, xml__t5, xml__t6, xml__t7, xml__t8, xml__t9, xml__t10, xml__t11
 	};
 
 	const char xml__error_unexpected_end_of_file[] = "Error: Unexpected end of file.";
@@ -409,6 +413,7 @@ extern "C" {
 				if (xml->ch != '<') JMP(xml__error);
 				NEXTCH();
 			}
+			TOK(xml__t9, XML_START_DOCUMENT);
 			xml->ra = RET_COMMENT_OR_DOCTYPE;
 			while (xml->ra == RET_COMMENT_OR_DOCTYPE) {
 				CALL(xml__c12, xml__tag);
@@ -600,6 +605,7 @@ extern "C" {
 			xml->level++;
 			TOK(xml__t3, XML_START_TAG);
 			CALL(xml__c14, xml__padding);
+			TOK(xml__t10, XML_START_ATTRIBUTES);
 			while (xml->ch != '>' && xml->ch != '/') {
 				CALL(xml__c15, xml__attr);
 				if (xml__strncmp(xml_get_name(xml), "xml:space", 9) == 0) {
@@ -625,6 +631,7 @@ extern "C" {
 				xml__pop_str(xml);
 				CALL(xml__c16, xml__padding);
 			}
+			TOK(xml__t11, XML_END_ATTRIBUTES);
 			if (xml->ch == '/') {
 				TOK(xml__t5, XML_END_TAG);
 				xml__restore_xml_space_stack(xml);
@@ -903,12 +910,52 @@ extern "C" {
 #undef RET_COMMENT_OR_DOCTYPE
 #undef RET_TAG_END
 #undef RET_CDATA
-#undef XML_IMPLEMENTATION
+#undef XML_PARSER_IMPLEMENTATION
 
 #endif
-
 #ifdef __cplusplus
 }
 #endif
-
 #endif
+
+/*
+------------------------------------------------------------------------------
+This software is available under 2 licenses -- choose whichever you prefer.
+------------------------------------------------------------------------------
+ALTERNATIVE A - MIT License
+Copyright (c) 2023 Stefan Elmlund
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+ALTERNATIVE B - Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+------------------------------------------------------------------------------
+*/
