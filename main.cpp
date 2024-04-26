@@ -1,5 +1,8 @@
 #include <iostream>
 
+#define XML_TOKENIZER_IMPLEMENTATION
+#include "xml_tokenizer.h"
+
 #include "example/read_catalog.h"
 #include "example/xml_dom.hpp"
 

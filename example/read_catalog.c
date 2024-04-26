@@ -2,8 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define XML_TOKENIZER_IMPLEMENTATION
-#include "../xml-tokenizer.h"
+#include "../xml_tokenizer.h"
 
 #include "read_catalog.h"
 

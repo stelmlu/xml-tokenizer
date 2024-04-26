@@ -3,11 +3,11 @@ xml-tokenizer.h
 
 This is a single-header-file [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt) library that tokenize xml file for C (also works in C++)
 
-The easiest way to install the library to your C/C++ project is to copy 'n' paste the *xml-tokenizer.h* to your project and do this in *one* C or C++ file:
+The easiest way to install the library to your C/C++ project is to copy 'n' paste the *xml_tokenizer.h* to your project and do this in *one* C or C++ file:
 
 ``` C
 #define XML_TOKENIZER_IMPLEMENTATION
-#include "xml-tokenizer.h"
+#include "xml_tokenizer.h"
 ```
 
 COMPILE-TIME OPTIONS
@@ -17,7 +17,7 @@ These defines only need to be set in the file containing XML_TOKENIZER_IMPLEMENT
 
 ``` C
 #define XML_REALLOC(context,ptr,size) better_realloc
-#define XML_FREE(context,ptr)         btter_free
+#define XML_FREE(context,ptr)         better_free
 ```
 
 By default the stdlib realloc() and free() is used. You can defines your own by defining these symbols. You must either define both, or neither.

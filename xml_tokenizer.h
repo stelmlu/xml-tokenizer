@@ -1,18 +1,18 @@
-/* xml-tokenizer.h - v0.1 - public domain data structures - Stefan Elmlund 2023
+/* xml_tokenizer.h - public domain data structures - Stefan Elmlund 2024
 *
 *  This is a single-header-file [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
 *  library that tokenize xml file for C (also works in C++)
 * 
-*  The easiest way to install the library to your C/C++ project is to copy 'n' paste the xml-tokenizer.h
+*  The easiest way to install the library to your C/C++ project is to copy 'n' paste the xml_tokenizer.h
 *  to your project and do this in *one* C or C++ file:
 *
 *    #define XML_TOKENIZER_IMPLEMENTATION
-*    #include "xml-tokenizer.h"
+*    #include "xml_tokenizer.h"
 *
 *  COMPILE-TIME OPTIONS
 *
 *    #define XML_REALLOC(context,ptr,size) better_realloc
-*    #define XML_FREE(context,ptr)         btter_free
+*    #define XML_FREE(context,ptr)         better_free
 *  
 *      These defines only need to be set in the file containing XML_TOKENIZER_IMPLEMENTATION    
 *
@@ -924,7 +924,7 @@ extern "C" {
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
-Copyright (c) 2023 Stefan Elmlund
+Copyright (c) 2024 Stefan Elmlund
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
 the Software without restriction, including without limitation the rights to

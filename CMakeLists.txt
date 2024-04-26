@@ -5,9 +5,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include directories
-include_directories(${CMAKE_SOURCE_DIR}/example)
-
 # Add executable
 add_executable(${PROJECT_NAME} main.cpp example/read_catalog.c)
 

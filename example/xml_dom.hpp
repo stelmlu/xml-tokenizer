@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../xml-tokenizer.h"
+#include "../xml_tokenizer.h"
 
 #include <string>
 #include <vector>
