@@ -28,6 +28,11 @@ size_t read_catalog(const char* catalog_filename, book_t* catalog, size_t max_bo
 
 	xml_t* test = xml_fopen(catalog_filename);
 
+	if(test == NULL) {
+		printf("Failed to open: %s\n", catalog_filename);
+		exit(-1);
+	}
+
 	for (xml_token_t tok = xml_next_token(test); tok != XML_END_DOCUMENT; )
 	{
 		while (!(tok == XML_END_TAG && strcmp(xml_get_name(test), "catalog") == 0)) {

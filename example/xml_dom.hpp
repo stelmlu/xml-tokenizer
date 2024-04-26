@@ -36,6 +36,8 @@ public:
 					break;
 				case XML_ERROR:
 					throw std::runtime_error(xml_get_error(xml));
+				default:
+					break;
 				}
 				tok = xml_next_token(xml);
 			}
@@ -102,6 +104,8 @@ public:
 				break;
 			case XML_ERROR:
 				throw std::runtime_error(xml_get_error(m_xml_ptr.get()));
+				break;
+			default:
 				break;
 			}
 			tok = xml_next_token(m_xml_ptr.get());

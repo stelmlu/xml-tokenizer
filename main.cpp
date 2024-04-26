@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include <iostream>
 
 #include "example/read_catalog.h"

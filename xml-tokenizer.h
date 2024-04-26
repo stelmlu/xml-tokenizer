@@ -155,7 +155,7 @@ extern "C" {
 #ifdef _MSC_VER
 #define XML_FOPEN(fp,filename,mode) fopen_s(&(fp),filename,mode)
 #else
-#define XML_FOPEN(fp,filename,mode) (((fp=fopen(filename,mode))==NULL)?(feof(fp)||ferror(fp)):(0))
+#define XML_FOPEN(fp,filename,mode) (((fp=fopen(filename,mode))==NULL)?(-1):(-(feof(fp)||ferror(fp))))
 #endif
 #define XML_FGETC(fp) fgetc(fp)
 #define XML_FCLOSE(fp) fclose(fp)
@@ -794,7 +794,7 @@ extern "C" {
 				xml__push(xml, &ch, sizeof(uint8_t));
 			}
 			else JMP(xml__error);
-			enum xml_label llc = (enum xml_label)lc;
+			enum xml__label llc = (enum xml__label)lc;
 			xml__push(xml, &llc, sizeof(enum xml__label));
 			RET();
 		}
@@ -817,6 +817,7 @@ extern "C" {
 			xml__push(xml, &prefix, sizeof(uint8_t));
 		}
 		for (;;) TOK(xml__error_loop, XML_ERROR);
+		default: break;
 	}
 	return XML_ERROR;
 	}
